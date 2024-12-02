@@ -44,10 +44,6 @@ spec:
           command:
             - /bin/sh
             - '-c'
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
-              protocol: TCP
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:

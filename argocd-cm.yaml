@@ -1,0 +1,46 @@
+apiVersion: v1
+data:
+  admin.enabled: "true"
+  application.instanceLabelKey: argocd.argoproj.io/instance
+  exec.enabled: "false"
+  resource.customizations: |
+    apps/Deployment:
+      health.lua: |
+        hs = {}
+        replicas = obj.spec.replicas or 0
+        available = obj.status.availableReplicas or 0
+        updated = obj.status.updatedReplicas or 0
+        ready = obj.status.readyReplicas or 0
+        
+        -- Ensure at least 75% of the replicas in the latest replica set are available
+        if updated >= (0.75 * replicas) and ready >= (0.75 * replicas) then
+          hs.status = "Healthy"
+          hs.message = "75% or more pods in the latest replica set are available and ready."
+        else
+          hs.status = "Progressing"
+          hs.message = string.format(
+            "%d/%d pods updated, %d/%d pods ready, %d/%d pods available.",
+            updated, replicas, ready, replicas, available, replicas
+          )
+        end
+        return hs
+  server.rbac.log.enforce.enable: "false"
+  statusbadge.enabled: "false"
+  timeout.hard.reconciliation: 0s
+  timeout.reconciliation: 180s
+  url: https://argocd.example.com
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: argocd
+    meta.helm.sh/release-namespace: argocd
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: argocd
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: v2.13.1
+    helm.sh/chart: argo-cd-7.7.7
+  name: argocd-cm
+  namespace: argocd

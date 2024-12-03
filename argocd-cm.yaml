@@ -7,10 +7,20 @@ data:
     apps/Deployment:
       health.lua: |
         hs = {}
+
+        -- Ensure all required fields are safely accessed
         replicas = obj.spec and obj.spec.replicas or 0
         available = obj.status and obj.status.availableReplicas or 0
         updated = obj.status and obj.status.updatedReplicas or 0
         ready = obj.status and obj.status.readyReplicas or 0
+
+        -- Debug logs (optional: can be removed in production)
+        if not obj.spec then
+          hs.message = "Warning: obj.spec is nil"
+        end
+        if not obj.status then
+          hs.message = "Warning: obj.status is nil"
+        end
 
         -- Ensure at least 75% of the replicas in the latest replica set are available
         if replicas > 0 and updated >= (0.75 * replicas) and ready >= (0.75 * replicas) then
@@ -18,16 +28,21 @@ data:
           hs.message = "75% or more pods in the latest replica set are available and ready."
         else
           hs.status = "Progressing"
-          -- Safely format the message only if replicas > 0
-          if replicas > 0 then
-            hs.message = string.format(
+          -- Use pcall to ensure string.format does not cause errors
+          local success, formatted_message = pcall(function()
+            return string.format(
               "%d/%d pods updated, %d/%d pods ready, %d/%d pods available.",
               updated or 0, replicas, ready or 0, replicas, available or 0, replicas
             )
+          end)
+          -- Use formatted message if successful, fallback if not
+          if success then
+            hs.message = formatted_message
           else
-            hs.message = "No replicas specified or resource is not initialized yet."
+            hs.message = "Error formatting health message. Some fields might be nil."
           end
         end
+
         return hs
   server.rbac.log.enforce.enable: "false"
   statusbadge.enabled: "false"

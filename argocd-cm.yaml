@@ -7,13 +7,13 @@ data:
     apps/Deployment:
       health.lua: |
         hs = {}
-        replicas = obj.spec.replicas or 0
-        available = obj.status.availableReplicas or 0
-        updated = obj.status.updatedReplicas or 0
-        ready = obj.status.readyReplicas or 0
+        replicas = obj.spec and obj.spec.replicas or 0
+        available = obj.status and obj.status.availableReplicas or 0
+        updated = obj.status and obj.status.updatedReplicas or 0
+        ready = obj.status and obj.status.readyReplicas or 0
 
         -- Ensure at least 75% of the replicas in the latest replica set are available
-        if updated >= (0.75 * replicas) and ready >= (0.75 * replicas) then
+        if replicas > 0 and updated >= (0.75 * replicas) and ready >= (0.75 * replicas) then
           hs.status = "Healthy"
           hs.message = "75% or more pods in the latest replica set are available and ready."
         else
@@ -22,10 +22,10 @@ data:
           if replicas > 0 then
             hs.message = string.format(
               "%d/%d pods updated, %d/%d pods ready, %d/%d pods available.",
-              updated, replicas, ready, replicas, available, replicas
+              updated or 0, replicas, ready or 0, replicas, available or 0, replicas
             )
           else
-            hs.message = "No replicas specified."
+            hs.message = "No replicas specified or resource is not initialized yet."
           end
         end
         return hs
